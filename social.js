@@ -3,6 +3,7 @@
   let sb = null;
   let me = null;
   let remote = null;
+  let lastError = '';
 
   const $ = s => document.querySelector(s);
   const esc = v => String(v || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -19,7 +20,7 @@
   }
   function client(){
     if(sb) return sb;
-    if(!window.supabase || !window.MESACARDS_SUPABASE) throw new Error('Conexión no disponible');
+    if(!window.supabase || !window.MESACARDS_SUPABASE) throw new Error('La app no cargó la conexión online');
     sb = window.supabase.createClient(window.MESACARDS_SUPABASE.url, window.MESACARDS_SUPABASE.key);
     return sb;
   }
@@ -34,20 +35,27 @@
   }
   async function ensureOnline(){
     const c = client();
-    let { data:{ session } } = await c.auth.getSession();
+    let session = null;
+    const current = await c.auth.getSession();
+    session = current.data.session;
     if(!session){
       const signed = await c.auth.signInAnonymously();
       if(signed.error) throw signed.error;
       session = signed.data.session;
     }
+    if(!session?.user) throw new Error('No se pudo iniciar sesión online');
     me = session.user;
-    for(let i=0;i<8;i++){
-      const res = await c.from('profiles').select('*').eq('id', me.id).maybeSingle();
-      if(res.error) throw res.error;
-      if(res.data){ remote = res.data; break; }
-      await new Promise(r => setTimeout(r, 350));
+
+    let res = await c.from('profiles').select('*').eq('id', me.id).maybeSingle();
+    if(res.error) throw res.error;
+    if(!res.data){
+      const lp = localProfile();
+      const rpc = await c.rpc('ensure_profile', { p_display_name: lp?.name || 'Jugador', p_avatar: lp?.avatar || '🦊' });
+      if(rpc.error) throw rpc.error;
+      remote = rpc.data;
+    } else {
+      remote = res.data;
     }
-    if(!remote) throw new Error('Perfil todavía no creado');
     await syncLocalProfile();
     return remote;
   }
@@ -55,7 +63,7 @@
     const lp = localProfile();
     if(!lp || !remote) return;
     const patch = { avatar: lp.avatar || remote.avatar, updated_at: new Date().toISOString() };
-    if(lp.name && lp.name !== remote.display_name) patch.display_name = lp.name;
+    if(lp.name && lp.name !== remote.display_name) patch.display_name = lp.name.slice(0,18);
     const res = await client().from('profiles').update(patch).eq('id', me.id).select('*').single();
     if(!res.error && res.data) remote = res.data;
   }
@@ -63,9 +71,11 @@
     shell(`<div class="socialTop"><div class="socialAvatar">⏳</div><div><h2>Conectando</h2><p>Preparando tu perfil online...</p></div></div>`);
     try { await ensureOnline(); renderHub(); }
     catch(e){
-      shell(`<div class="socialTop"><div class="socialAvatar">⚠️</div><div><h2>No se pudo conectar</h2><p>Activa el acceso anónimo en Supabase y vuelve a intentar.</p></div></div><div class="socialActions"><button class="btn primary" id="retryOnline" type="button">Reintentar</button><button class="btn ghost" id="closeOnline" type="button">Cerrar</button></div>`);
+      lastError = e?.message || 'Error desconocido';
+      const needsSql = lastError.includes('ensure_profile') || lastError.includes('function') || lastError.includes('permission') || lastError.includes('policy');
+      shell(`<div class="socialTop"><div class="socialAvatar">⚠️</div><div><h2>No se pudo conectar</h2><p>${needsSql ? 'Falta ejecutar el parche online en Supabase.' : 'La conexión online respondió con un error.'}</p></div></div><div class="socialActions"><button class="btn primary" id="retryOnline" type="button">Reintentar</button><button class="btn ghost" id="copyError" type="button">Copiar error</button></div><p class="socialNotice">${esc(lastError)}</p>`);
       $('#retryOnline').onclick = openOnline;
-      $('#closeOnline').onclick = close;
+      $('#copyError').onclick = async () => { await navigator.clipboard?.writeText(lastError); toast('Error copiado'); };
     }
   }
   function renderHub(){
@@ -132,7 +142,7 @@
     if(!roomCode) return toast('Escribe código de sala');
     const res = await client().from('rooms').select('*').eq('room_code', roomCode).maybeSingle();
     if(res.error || !res.data) return toast('Sala no encontrada');
-    await client().from('room_players').insert({ room_id:res.data.id, profile_id:me.id });
+    await client().from('room_players').insert({ room_id:res.data.id, profile_id:me.id, seat_number:2 });
     showRoom(res.data);
   }
   async function showRoom(room){
