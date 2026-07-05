@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mesacards-v9';
+const CACHE_NAME = 'mesacards-v10';
 const APP_SHELL = [
   './',
   './index.html',
