@@ -1,0 +1,14 @@
+{
+  "name": "MesaCards",
+  "short_name": "MesaCards",
+  "description": "Juegos sociales de cartas y fichas virtuales para celular.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08101d",
+  "theme_color": "#101727",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
