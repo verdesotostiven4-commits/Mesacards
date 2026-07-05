@@ -1,7 +1,10 @@
 -- MesaCards online auth/profile fix
 -- Run this once in Supabase SQL Editor if Online cannot connect after enabling Anonymous sign-ins.
 
-create policy if not exists "users insert own profile" on public.profiles
+create extension if not exists pgcrypto;
+
+drop policy if exists "users insert own profile" on public.profiles;
+create policy "users insert own profile" on public.profiles
   for insert to authenticated
   with check (auth.uid() = id);
 
@@ -25,6 +28,12 @@ begin
   if char_length(clean_name) < 3 then
     clean_name := 'Jugador';
   end if;
+
+  clean_name := regexp_replace(clean_name, '[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9_ ]', '', 'g');
+  if char_length(clean_name) < 3 then
+    clean_name := 'Jugador';
+  end if;
+
   clean_name := substring(clean_name from 1 for 12);
   suffix := upper(substring(encode(gen_random_bytes(2), 'hex') from 1 for 4));
   final_name := substring(clean_name || suffix from 1 for 18);
