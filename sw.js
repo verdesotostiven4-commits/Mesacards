@@ -1,13 +1,16 @@
-const CACHE_NAME = 'mesacards-v3';
+const CACHE_NAME = 'mesacards-v4';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
   './enhance.css',
   './pro-polish.css',
+  './flow.css',
   './app.js',
   './enhance.js',
+  './flow-guard.js',
   './pro-polish.js',
+  './flow.js',
   './manifest.webmanifest',
   './icon.svg'
 ];
