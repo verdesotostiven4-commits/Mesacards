@@ -6,6 +6,8 @@ MesaCards es una PWA móvil de juegos sociales de cartas y fichas virtuales. Est
 
 - PWA instalable en celular.
 - Diseño mobile-first con modo vertical y adaptación horizontal.
+- Pantalla inicial para crear mesa con nombres personalizados.
+- Corrección de nombres genéricos para nuevos usuarios: Jugador 1 y Jugador 2.
 - Banner de instalación para una experiencia tipo app.
 - Soporte offline después de cargar una vez.
 - Multijugador local/pass-and-play desde el mismo celular.
@@ -14,6 +16,8 @@ MesaCards es una PWA móvil de juegos sociales de cartas y fichas virtuales. Est
 - Botón de ayuda dentro de cada mesa para volver a ver las reglas.
 - Tarjeta de ayuda rápida mientras se juega.
 - Animaciones de cartas, mesa, fichas, gemas y celebraciones.
+- Efectos de sonido con Web Audio.
+- Vibración/haptics en botones, cartas, fichas y acciones importantes.
 - Ajuste para volver a mostrar tutoriales.
 - 4 juegos base:
   - 21 Flash: reto social contra banca virtual.
