@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mesacards-v4';
+const CACHE_NAME = 'mesacards-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,11 +6,14 @@ const APP_SHELL = [
   './enhance.css',
   './pro-polish.css',
   './flow.css',
+  './social.css',
   './app.js',
   './enhance.js',
   './flow-guard.js',
   './pro-polish.js',
   './flow.js',
+  './supabase-config.js',
+  './social.js',
   './manifest.webmanifest',
   './icon.svg'
 ];
