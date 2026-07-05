@@ -1,6 +1,6 @@
 (function(){
   const STORAGE_KEY = 'mesacards_state_v1';
-  const INSTALL_KEY = 'mesacards_install_gate_seen_v2';
+  const INSTALL_KEY = 'mesacards_install_gate_seen_v3';
   const FLOW_KEY = 'mesacards_flow_done_v2';
   const MODE_KEY = 'mesacards_play_mode_v2';
   const PLAYERS_KEY = 'mesacards_players_ready_v2';
@@ -29,7 +29,7 @@
     overlay.className = 'flowOverlay';
     overlay.innerHTML = `<div class="flowSheetWrap">${close?'<button class="flowClose" id="flowClose">×</button>':''}<div class="flowSheet">${content}</div></div>`;
     document.body.appendChild(overlay);
-    $('#flowClose')?.addEventListener('click', () => { localStorage.setItem(FLOW_KEY,'1'); closeFlow(); sound('tap'); haptic('tap'); });
+    $('#flowClose')?.addEventListener('click', () => { closeFlow(); sound('tap'); haptic('tap'); });
     sound('open'); haptic('card');
   }
 
@@ -39,8 +39,9 @@
   });
 
   function showInstallGate(force=false){
-    if(!force && (isStandalone() || localStorage.getItem(INSTALL_KEY))) return showPlayMode(false);
-    shell(`<div class="flowHero"><div class="flowLogo">♣</div><div><p class="eyebrow">Paso 1 · mejor experiencia</p><h2>Instala MesaCards</h2><p>Abre la app como PWA para jugar en pantalla completa, con sonidos, vibración, mejor rendimiento y modo local offline.</p></div></div><div class="flowPreview"><span>📱 Pantalla completa</span><span>🔊 Sonido + vibración</span><span>📴 Modo local offline</span></div><div class="flowActions"><button class="btn primary" id="installNow">Instalar ahora</button><button class="btn ghost" id="installSkip">Seguir sin instalar</button></div><p class="flowFine">En Android/Chrome también puedes tocar ⋮ y elegir “Agregar a pantalla principal”. En iPhone: compartir → “Agregar a pantalla de inicio”.</p>`, false);
+    if(isStandalone()) return showPlayMode(false);
+    if(!force && localStorage.getItem(INSTALL_KEY)) return showInstallComplete();
+    shell(`<div class="flowHero"><div class="flowLogo">♣</div><div><p class="eyebrow">Paso 1 · instalación</p><h2>Instala MesaCards</h2><p>Para continuar con la experiencia completa, instala la app en tu celular. Así se abre en pantalla completa, con mejor rendimiento, sonidos y vibración.</p></div></div><div class="flowPreview"><span>📱 Pantalla completa</span><span>🔊 Sonido + vibración</span><span>📴 Mejor experiencia</span></div><div class="flowActions"><button class="btn primary" id="installNow">Instalar MesaCards</button></div><p class="flowFine">En Android/Chrome también puedes tocar ⋮ y elegir “Agregar a pantalla principal”. En iPhone: compartir → “Agregar a pantalla de inicio”.</p>`, false);
     $('#installNow').onclick = async () => {
       sound('chip'); haptic('chip');
       localStorage.setItem(INSTALL_KEY,'1');
@@ -50,12 +51,14 @@
         deferredInstall = null;
       } else if(typeof window.installApp === 'function') {
         window.installApp();
-      } else {
-        toast('Usa el menú del navegador para agregar a pantalla principal');
       }
-      setTimeout(() => showPlayMode(true), 450);
+      showInstallComplete();
     };
-    $('#installSkip').onclick = () => { localStorage.setItem(INSTALL_KEY,'1'); sound('tap'); haptic('tap'); showPlayMode(true); };
+  }
+
+  function showInstallComplete(){
+    shell(`<div class="flowHero"><div class="flowLogo">✅</div><div><p class="eyebrow">Instalación</p><h2>Ya puedes abrir MesaCards</h2><p>Revisa tu pantalla principal o el cajón de apps. Abre MesaCards desde ahí para continuar con la configuración de juego.</p></div></div><div class="flowPreview"><span>Busca el ícono</span><span>Abre la PWA</span><span>Continúa jugando</span></div><div class="miniSteps"><span><i>1.</i> Sal de Chrome cuando termine la instalación.</span><span><i>2.</i> Abre MesaCards desde tu pantalla de inicio.</span><span><i>3.</i> Ahí recién aparecerá “Elige la conexión”.</span></div><div class="flowActions"><button class="btn primary" id="installDone">Entendido</button></div><p class="flowFine">Si no apareció la ventana de instalación, usa el menú ⋮ de Chrome y toca “Agregar a pantalla principal”.</p>`, false);
+    $('#installDone').onclick = () => { closeFlow(); toast('Abre MesaCards desde tu pantalla principal'); };
   }
 
   function showPlayMode(force=false){
@@ -117,17 +120,18 @@
   function enhanceHomeButtons(){
     const panel = $('.panel');
     if(panel && !$('#flowModeBtn')){
-      panel.querySelector('.heroActions')?.insertAdjacentHTML('beforeend','<button class="btn ghost" id="flowModeBtn" onclick="openPlayFlow()">Modo de juego</button>');
+      panel.querySelector('.heroActions')?.insertAdjacentHTML('beforeend','<button class="btn ghost" id="flowModeBtn" onclick="openPlayFlow()">Instalar / modo de juego</button>');
     }
     const hero = $('.hero');
     if(hero && !$('.flowHint')){
-      hero.insertAdjacentHTML('beforeend','<p class="flowHint">Primero instala la app si quieres pantalla completa. Luego elige si jugarán en un celular o, más adelante, con sala online.</p>');
+      hero.insertAdjacentHTML('beforeend','<p class="flowHint">Primero instala la app para continuar con la experiencia completa. Después podrás elegir cómo jugar.</p>');
     }
   }
 
   function shouldStartFlow(){
-    if(localStorage.getItem(FLOW_KEY)) return false;
-    return true;
+    if(isStandalone() && localStorage.getItem(FLOW_KEY)) return false;
+    if(!isStandalone()) return true;
+    return !localStorage.getItem(FLOW_KEY);
   }
 
   window.openPlayFlow = () => showInstallGate(true);
