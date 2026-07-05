@@ -1,8 +1,6 @@
 {
-  "buildCommand": "node build.js",
   "outputDirectory": "public",
-  "installCommand": "npm install",
   "rewrites": [
-    { "source": "/((?!.*\\..*).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
