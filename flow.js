@@ -87,29 +87,34 @@
     ensureHomeAfterProfile();
   }
 
-  function avatarPicker(){
-    return `<div class="profileMiniGrid" id="avatarGrid">${AVATARS.map((a,i)=>`<button type="button" class="${i===0?'active':''}" data-avatar="${a}">${a}</button>`).join('')}</div>`;
+  function avatarPicker(selected='🦊'){
+    return `<div class="profileMiniGrid" id="avatarGrid">${AVATARS.map((a,i)=>`<button type="button" class="${a===selected || (!selected && i===0)?'active':''}" data-avatar="${a}">${a}</button>`).join('')}</div>`;
   }
 
   function showProfileSetup(){
-    shell(`<div class="flowHero"><div class="flowLogo">👤</div><div><p class="eyebrow">Primer inicio</p><h2>Crea tu perfil</h2><p>Elige tu nombre y personaje. Después entrarás directo al inicio de MesaCards.</p></div></div><div class="setupForm"><label>Nombre de jugador<input id="profileName" maxlength="18" placeholder="Ej. Stiven" autocomplete="off"></label><label>Personaje${avatarPicker()}</label></div><div class="flowActions"><button class="btn primary" id="saveProfile" type="button">Entrar a MesaCards</button></div><p class="flowFine">Tu perfil se guarda en este dispositivo. Más adelante podrás buscar amigos, compartir perfil y jugar en salas.</p>`, { close:false });
+    const current = profile();
+    const editing = !!current;
+    shell(`<div class="flowHero"><div class="flowLogo">👤</div><div><p class="eyebrow">${editing?'Perfil':'Primer inicio'}</p><h2>${editing?'Editar perfil':'Crea tu perfil'}</h2><p>${editing?'Actualiza tu nombre o personaje.':'Elige tu nombre y personaje. Después entrarás directo al inicio de MesaCards.'}</p></div></div><div class="setupForm"><label>Nombre de jugador<input id="profileName" maxlength="18" placeholder="Ej. Stiven" autocomplete="off" value="${escapeHtml(current?.name || '')}"></label><label>Personaje${avatarPicker(current?.avatar || '🦊')}</label></div><div class="flowActions">${editing?'<button class="btn ghost" id="cancelProfile" type="button">Cancelar</button>':''}<button class="btn primary" id="saveProfile" type="button">${editing?'Guardar perfil':'Entrar a MesaCards'}</button></div><p class="flowFine">Tu perfil se guarda en este dispositivo. Más adelante podrás buscar amigos, compartir perfil y jugar en salas.</p>`, { close:editing });
     $('#avatarGrid').onclick = e => {
       const btn = e.target.closest('[data-avatar]'); if(!btn) return;
       $('#avatarGrid').querySelectorAll('button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active'); sound('chip'); haptic('tap');
     };
+    $('#cancelProfile')?.addEventListener('click', closeFlow);
     $('#saveProfile').onclick = () => {
       const name = $('#profileName').value.trim();
       const avatar = $('#avatarGrid .active')?.dataset.avatar || '🦊';
       if(name.length < 3) return toast('Escribe un nombre de al menos 3 letras');
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, avatar, createdAt: Date.now() }));
-      writeAppPlayers([name, 'Invitado']);
-      localStorage.removeItem(MODE_KEY);
-      localStorage.removeItem(PLAYERS_KEY);
+      localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, avatar, createdAt: current?.createdAt || Date.now(), updatedAt: Date.now() }));
+      if(!editing) {
+        writeAppPlayers([name, 'Invitado']);
+        localStorage.removeItem(MODE_KEY);
+        localStorage.removeItem(PLAYERS_KEY);
+      }
       sound('win'); haptic('win');
       closeFlow();
       if(typeof window.render === 'function') window.render();
-      toast('Perfil creado');
+      toast(editing ? 'Perfil guardado' : 'Perfil creado');
     };
   }
 
@@ -181,7 +186,7 @@
     window.__mesaFlowHooked = true;
   }
 
-  window.openPlayFlow = () => isStandalone() ? (profile() ? showProfileSetup() : showProfileSetup()) : showInstallGate();
+  window.openPlayFlow = () => isStandalone() ? showProfileSetup() : showInstallGate();
   const oldRender = window.render;
   if(typeof oldRender === 'function') window.render = function(){ const result = oldRender.apply(this, arguments); setTimeout(() => { enhanceHomeButtons(); hookStartGame(); }, 60); return result; };
   window.addEventListener('load', () => setTimeout(() => {
