@@ -2,7 +2,12 @@
   const STORAGE_KEY = 'mesacards_state_v1';
   const PROFILE_KEY = 'mesacards_profile_v7';
   const OLD_PROFILE_KEYS = ['mesacards_profile_v6','mesacards_profile_v5'];
-  const AVATARS = ['🦊','🐺','🐯','🦁','🐼','🐵','🐙','🦅'];
+  const AVATARS = [
+    {icon:'🧑🏽‍💼',name:'Elite',style:'Clásico'}, {icon:'👩🏻‍💼',name:'Luna',style:'Nocturna'},
+    {icon:'🧢',name:'Marco',style:'Urbano'}, {icon:'👩🏽',name:'Vale',style:'Dorada'},
+    {icon:'🧔🏽',name:'Nico',style:'VIP'}, {icon:'🦊',name:'Fox',style:'Ágil'},
+    {icon:'🐯',name:'Tigre',style:'Fuerte'}, {icon:'🦁',name:'León',style:'Rey'}
+  ];
   let deferredInstall = null;
   const $ = sel => document.querySelector(sel);
 
@@ -24,7 +29,7 @@
       for(const key of OLD_PROFILE_KEYS){
         const old = JSON.parse(localStorage.getItem(key));
         if(old?.name){
-          const migrated = { name:old.name, avatar:old.avatar || '🦊', code:old.code || generateCode(), createdAt:old.createdAt || Date.now(), updatedAt:Date.now() };
+          const migrated = { name:old.name, avatar:old.avatar || '🧑🏽‍💼', style:old.style || 'Clásico Elite', code:old.code || generateCode(), createdAt:old.createdAt || Date.now(), updatedAt:Date.now() };
           localStorage.setItem(PROFILE_KEY, JSON.stringify(migrated));
           return migrated;
         }
@@ -36,17 +41,15 @@
     if($('#mesaCleanStyles')) return;
     const style = document.createElement('style');
     style.id = 'mesaCleanStyles';
-    style.textContent = `.panel:has(#playersText),.infoCard,.socialFab,#openSetupBtn,.premiumStatus.home{display:none!important}.hero .heroActions #flowModeBtn{display:inline-flex!important}.gameTile{cursor:pointer}.flowHint{margin-top:18px!important}`;
+    style.textContent = `.panel:has(#playersText),.infoCard,.socialFab,#openSetupBtn,.premiumStatus.home{display:none!important}.hero .heroActions #flowModeBtn{display:inline-flex!important}.gameTile{cursor:pointer}.flowHint{display:none!important}`;
     document.head.appendChild(style);
   }
   function cleanupHome(){
     installStyles();
     document.querySelectorAll('.panel').forEach(p => { if(p.querySelector('#playersText')) p.style.display='none'; });
-    document.querySelectorAll('.infoCard,.socialFab,#openSetupBtn,.premiumStatus.home').forEach(el => el.remove());
+    document.querySelectorAll('.infoCard,.socialFab,#openSetupBtn,.premiumStatus.home,.flowHint').forEach(el => el.remove());
     const heroActions = document.querySelector('.hero .heroActions');
     if(heroActions && !$('#flowModeBtn')) heroActions.insertAdjacentHTML('beforeend','<button class="btn ghost" id="flowModeBtn" onclick="openPlayFlow()">Perfil</button>');
-    const hero = document.querySelector('.hero');
-    if(hero && !$('.flowHint')) hero.insertAdjacentHTML('beforeend','<p class="flowHint">Elige un juego para iniciar una partida.</p>');
   }
   function syncPlayers(names){
     const clean = [];
@@ -58,15 +61,11 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...old, players: finalNames.map(name => ({ name, chips:40 })), screen:'home', game:null, data:null }));
     }catch{}
     const box = $('#playersText');
-    if(box){
-      box.value = finalNames.join('\n');
-      if(typeof window.savePlayersFromText === 'function') window.savePlayersFromText();
-    }
+    if(box){ box.value = finalNames.join('\n'); if(typeof window.savePlayersFromText === 'function') window.savePlayersFromText(); }
     return finalNames;
   }
   function ensureProfilePlayers(){
-    const p = profile();
-    if(!p) return;
+    const p = profile(); if(!p) return;
     let needs = false;
     try{
       const old = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
@@ -78,12 +77,10 @@
   function closeFlow(){ $('.flowOverlay')?.remove(); }
   function shell(content, { close=true } = {}){
     closeFlow();
-    const overlay = document.createElement('div');
-    overlay.className = 'flowOverlay';
+    const overlay = document.createElement('div'); overlay.className = 'flowOverlay';
     overlay.innerHTML = `<div class="flowSheetWrap">${close?'<button class="flowClose" data-close-flow="1" type="button">×</button>':''}<div class="flowSheet">${content}</div></div>`;
     overlay.addEventListener('click', e => { if(e.target.closest('[data-close-flow]')){ closeFlow(); sound('tap'); haptic('tap'); } });
-    document.body.appendChild(overlay);
-    sound('open'); haptic('card');
+    document.body.appendChild(overlay); sound('open'); haptic('card');
   }
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
   function showInstallGate(){
@@ -95,27 +92,29 @@
       shell(`<div class="flowHero"><div class="flowLogo">✅</div><div><p class="eyebrow">Instalación lista</p><h2>Abre MesaCards desde el ícono</h2><p>Desde Chrome no se continúa. Busca el ícono de MesaCards y abre la app instalada.</p></div></div>`, { close:false });
     };
   }
-  function avatarPicker(selected='🦊'){
-    return `<div class="profileMiniGrid" id="avatarGrid">${AVATARS.map(a => `<button type="button" class="${a===selected?'active':''}" data-avatar="${a}">${a}</button>`).join('')}</div>`;
+  function avatarPicker(selected='🧑🏽‍💼'){
+    return `<div class="characterPreview"><div class="characterBig" id="characterBig">${escapeHtml(selected)}</div><div><b id="characterName">Personaje</b><small>Identidad visual para tu mesa</small></div></div><div class="personaTabs"><button class="active" type="button">Personajes</button><button type="button">Outfits</button><button type="button">Color</button></div><div class="profileMiniGrid characterGrid" id="avatarGrid">${AVATARS.map(a => `<button type="button" class="${a.icon===selected?'active':''}" data-avatar="${a.icon}" data-style="${escapeHtml(a.style)}" data-name="${escapeHtml(a.name)}"><span>${a.icon}</span><b>${a.name}</b><small>${a.style}</small></button>`).join('')}</div>`;
   }
   function showProfileSetup(editing=true, afterSave=null){
-    const current = profile();
-    const isEdit = editing && !!current;
-    shell(`<div class="flowHero"><div class="flowLogo">${escapeHtml(current?.avatar || '👤')}</div><div><p class="eyebrow">${isEdit?'Perfil':'Primer inicio'}</p><h2>${isEdit?'Editar perfil':'Crea tu perfil'}</h2><p>${isEdit?'Cambia tu nombre o personaje.':'Elige tu nombre y personaje para entrar a MesaCards.'}</p></div></div><div class="setupForm"><label>Nombre de jugador<input id="profileName" maxlength="18" placeholder="Ej. Stiven" autocomplete="off" value="${escapeHtml(current?.name || '')}"></label><label>Personaje${avatarPicker(current?.avatar || '🦊')}</label></div><div class="flowActions">${isEdit?'<button class="btn ghost" id="cancelProfile" type="button">Cancelar</button>':''}<button class="btn primary" id="saveProfile" type="button">${isEdit?'Guardar perfil':'Entrar'}</button></div><p class="flowFine">Tu perfil queda guardado en este dispositivo.</p>`, { close:isEdit });
+    const current = profile(); const isEdit = editing && !!current;
+    shell(`<div class="profileHeader"><div class="flowLogo">♣</div><div><p class="eyebrow">${isEdit?'Perfil':'Primer inicio'}</p><h2>${isEdit?'Personaliza tu personaje':'Crea tu perfil'}</h2><p>Cada jugador usa su propio celular para jugar en salas online o local.</p></div></div><div class="setupForm profileProForm"><label>Nombre de jugador<input id="profileName" maxlength="18" placeholder="Ej. ValentePoker" autocomplete="off" value="${escapeHtml(current?.name || '')}"></label><label>Personaje${avatarPicker(current?.avatar || '🧑🏽‍💼')}</label><div class="safeNote"><span>✓</span><p>Solo fichas virtuales. No hay dinero real involucrado.</p></div></div><div class="flowActions">${isEdit?'<button class="btn ghost" id="cancelProfile" type="button">Cancelar</button>':''}<button class="btn primary" id="saveProfile" type="button">${isEdit?'Guardar personaje':'Continuar'}</button></div><p class="flowFine">Tu perfil se guarda en este dispositivo y se sincroniza con el modo online.</p>`, { close:isEdit });
+    const updatePreview = btn => { $('#characterBig').textContent = btn.dataset.avatar; $('#characterName').textContent = `${btn.dataset.name} · ${btn.dataset.style}`; };
+    const activeStart = $('#avatarGrid .active') || $('#avatarGrid button'); if(activeStart) updatePreview(activeStart);
     $('#avatarGrid').onclick = e => {
       const btn = e.target.closest('[data-avatar]'); if(!btn) return;
       $('#avatarGrid').querySelectorAll('button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active'); sound('chip'); haptic('tap');
+      btn.classList.add('active'); updatePreview(btn); sound('chip'); haptic('tap');
     };
     $('#cancelProfile')?.addEventListener('click', closeFlow);
     $('#saveProfile').onclick = () => {
       const name = $('#profileName').value.trim();
-      const avatar = $('#avatarGrid .active')?.dataset.avatar || '🦊';
+      const chosen = $('#avatarGrid .active');
+      const avatar = chosen?.dataset.avatar || '🧑🏽‍💼';
+      const style = chosen?.dataset.style || 'Clásico Elite';
       if(name.length < 3) return toast('Escribe un nombre de al menos 3 letras');
-      const saved = { name, avatar, code: current?.code || generateCode(), createdAt: current?.createdAt || Date.now(), updatedAt:Date.now() };
+      const saved = { name, avatar, style, code: current?.code || generateCode(), createdAt: current?.createdAt || Date.now(), updatedAt:Date.now() };
       localStorage.setItem(PROFILE_KEY, JSON.stringify(saved));
-      syncPlayers([name, 'Invitado']);
-      closeFlow(); cleanupHome(); toast(isEdit?'Perfil guardado':'Perfil creado');
+      syncPlayers([name, 'Invitado']); closeFlow(); cleanupHome(); toast(isEdit?'Personaje guardado':'Perfil creado');
       if(typeof afterSave === 'function') setTimeout(afterSave, 50);
     };
   }
@@ -126,8 +125,7 @@
       if(!isStandalone()) return showInstallGate();
       const p = profile();
       if(!p) return showProfileSetup(false, () => { ensureProfilePlayers(); original(id); });
-      ensureProfilePlayers();
-      return original(id);
+      ensureProfilePlayers(); return original(id);
     };
     window.__mesaDirectHooked = true;
   }
