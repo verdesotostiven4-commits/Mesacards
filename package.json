@@ -1,0 +1,8 @@
+{
+  "name": "mesacards-static",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "rm -rf dist && mkdir dist && cp -R index.html styles.css enhance.css pro-polish.css flow.css social.css luxury.css app.js enhance.js flow-guard.js pro-polish.js flow.js supabase-config.js social.js luxury-home.js luxury-online.js luxury-games.js manifest.webmanifest icon.svg sw.js dist/"
+  }
+}
