@@ -1,9 +1,6 @@
 (function(){
-  const STORAGE_KEY = 'mesacards_state_v1';
-  const SETUP_KEY = 'mesacards_setup_done_v1';
   let audioCtx = null;
   let lastTap = 0;
-  let appliedNameFix = false;
 
   function getAudio(){
     if(audioCtx) return audioCtx;
@@ -47,59 +44,6 @@
     el.textContent = text; el.classList.add('show');
     clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 1900);
   }
-  function normalizeStoredNames(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return;
-      const data = JSON.parse(raw);
-      const names = (data.players || []).map(p => p.name).join('|').toLowerCase();
-      if(names === 'tú|moni' || names === 'tu|moni'){
-        data.players = [{name:'Jugador 1', chips:40},{name:'Jugador 2', chips:40}];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      }
-    } catch {}
-  }
-  function fixVisibleNames(){
-    if(appliedNameFix) return;
-    const box = document.querySelector('#playersText');
-    if(!box) return;
-    const clean = box.value.trim().toLowerCase();
-    if(clean === 'tú\nmoni' || clean === 'tu\nmoni'){
-      appliedNameFix = true;
-      box.value = 'Jugador 1\nJugador 2';
-      if(typeof window.savePlayersFromText === 'function') window.savePlayersFromText();
-    }
-  }
-  function showSetup(force=false){
-    if(!force && localStorage.getItem(SETUP_KEY)) return;
-    if(document.querySelector('.setupOverlay')) return;
-    const overlay = document.createElement('div');
-    overlay.className = 'setupOverlay';
-    overlay.innerHTML = `<div class="setupSheet"><div class="setupTop"><div class="setupLogo">♣</div><div><h2>Crea tu mesa</h2><p>Personaliza los nombres antes de jugar. Así cualquiera que instale la app empieza limpio y profesional.</p></div></div><div class="premiumStatus"><span>Local</span><span>Sin cuentas</span><span>Puntos virtuales</span></div><div class="setupForm"><label>Jugador 1<input id="setupP1" maxlength="18" placeholder="Ej. Stiven" value="Jugador 1"></label><label>Jugador 2<input id="setupP2" maxlength="18" placeholder="Ej. Invitado" value="Jugador 2"></label></div><div class="setupActions"><button class="btn ghost" id="setupGuest">Omitir</button><button class="btn primary" id="setupSave">Crear mesa</button></div><p class="setupFine">Puedes agregar más personas desde la sección Jugadores. Este modo es pass-and-play: se pasan el celular por turnos.</p></div>`;
-    document.body.appendChild(overlay);
-    sound('open'); haptic('card');
-    overlay.querySelector('#setupGuest').onclick = () => { localStorage.setItem(SETUP_KEY,'1'); overlay.remove(); sound('tap'); haptic('tap'); };
-    overlay.querySelector('#setupSave').onclick = () => {
-      const p1 = overlay.querySelector('#setupP1').value.trim() || 'Jugador 1';
-      const p2 = overlay.querySelector('#setupP2').value.trim() || 'Jugador 2';
-      const box = document.querySelector('#playersText');
-      if(box){ box.value = `${p1}\n${p2}`; if(typeof window.savePlayersFromText === 'function') window.savePlayersFromText(); }
-      localStorage.setItem(SETUP_KEY,'1'); overlay.remove(); sound('chip'); haptic('chip'); toast('Mesa creada');
-    };
-  }
-  function enhanceHome(){
-    const hero = document.querySelector('.hero');
-    if(hero && !document.querySelector('.premiumStatus.home')){
-      const status = document.createElement('div');
-      status.className = 'premiumStatus home';
-      status.innerHTML = '<span>PWA</span><span>Offline</span><span>Multijugador local</span>';
-      hero.appendChild(status);
-    }
-    const panel = document.querySelector('.panel');
-    if(panel && !document.querySelector('#openSetupBtn')){
-      panel.querySelector('.heroActions')?.insertAdjacentHTML('beforeend','<button class="btn ghost" id="openSetupBtn" onclick="openMesaSetup()">Crear mesa</button>');
-    }
-  }
   function wireInteractions(){
     document.addEventListener('pointerup', e => {
       const target = e.target.closest('button,.gameTile,.card,.gem,.chip');
@@ -121,18 +65,14 @@
       window.feedback = (text) => { sound('chip'); haptic('chip'); toast(text); };
     } catch {}
   }
-  const oldStartGame = window.startGame;
-  if(typeof oldStartGame === 'function'){
-    window.startGame = function(mode){ sound('open'); haptic('card'); return oldStartGame.apply(this, arguments); };
+  function cleanOldHomeExtras(){
+    document.querySelectorAll('.premiumStatus.home,.setupOverlay,#openSetupBtn').forEach(el => el.remove());
   }
   const oldRender = window.render;
   if(typeof oldRender === 'function'){
-    window.render = function(){ const result = oldRender.apply(this, arguments); setTimeout(afterRender, 30); return result; };
+    window.render = function(){ const result = oldRender.apply(this, arguments); setTimeout(cleanOldHomeExtras, 30); return result; };
   }
-  window.openMesaSetup = () => showSetup(true);
-  function afterRender(){ fixVisibleNames(); enhanceHome(); }
-  normalizeStoredNames(); overrideFeedback(); wireInteractions();
-  window.addEventListener('load', () => {
-    setTimeout(() => { afterRender(); showSetup(false); }, 250);
-  });
+  window.openMesaSetup = function(){ if(typeof window.openPlayFlow === 'function') window.openPlayFlow(); };
+  overrideFeedback(); wireInteractions();
+  window.addEventListener('load', () => setTimeout(cleanOldHomeExtras, 250));
 })();
