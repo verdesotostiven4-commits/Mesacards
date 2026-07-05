@@ -23,14 +23,14 @@
     close();
     const overlay = document.createElement('div');
     overlay.className = 'socialOverlay';
-    overlay.innerHTML = `<section class="socialSheet"><button class="socialClose" id="socialClose">×</button>${content}</section>`;
+    overlay.innerHTML = `<section class="socialSheet"><button class="socialClose" id="socialClose" type="button">×</button>${content}</section>`;
     document.body.appendChild(overlay);
     document.querySelector('#socialClose').onclick = close;
     sound('open'); haptic('card');
   }
   async function ensureAuth(){
     const supa = initClient();
-    if(!supa) throw new Error('Supabase no está cargado todavía');
+    if(!supa) throw new Error('offline');
     const { data } = await supa.auth.getSession();
     if(data.session?.user){ currentUser = data.session.user; return currentUser; }
     const result = await supa.auth.signInAnonymously();
@@ -53,12 +53,15 @@
       renderProfile(p);
       handleDeepLinks();
     } catch(err){
-      shell(`<div class="socialTop"><div class="socialAvatar">⚠️</div><div><h2>No se pudo conectar</h2><p>${esc(err.message || 'Revisa Supabase y vuelve a intentar.')}</p></div></div><p class="socialNotice">Si acabas de ejecutar el SQL, revisa que Anonymous sign-ins esté permitido en Supabase Auth.</p>`);
+      shell(`<div class="socialTop"><div class="socialAvatar">🛠️</div><div><h2>Perfil online en preparación</h2><p>La sección social todavía se está activando. Puedes jugar ahora en modo local y volver a probar después.</p></div></div><div class="socialActions"><button class="btn primary" id="socialLocalBtn" type="button">Jugar en modo local</button><button class="btn ghost" id="socialCloseBtn" type="button">Cerrar</button></div><p class="socialNotice">Tu perfil local seguirá guardado en este dispositivo.</p>`);
+      document.querySelector('#socialLocalBtn').onclick = () => { close(); window.openPlayFlow?.(); };
+      document.querySelector('#socialCloseBtn').onclick = close;
     }
   }
   function renderProfile(p){
+    if(!p) return openSocial();
     const shareUrl = `${location.origin}${location.pathname}?profile=${encodeURIComponent(p.player_code)}`;
-    shell(`<div class="socialTop"><div class="socialAvatar">${esc(p.avatar || '🦊')}</div><div><h2>${esc(p.display_name)}</h2><p><span class="socialCode">${esc(p.player_code)}</span> · Nivel ${p.level || 1}</p></div></div><div class="socialGrid"><div class="socialStat"><b>${p.total_points || 0}</b><span>Puntos</span></div><div class="socialStat"><b>${p.wins || 0}</b><span>Victorias</span></div><div class="socialStat"><b>${p.current_streak || 0}</b><span>Racha</span></div><div class="socialStat"><b>${p.games_played || 0}</b><span>Partidas</span></div></div><div class="socialForm"><input id="displayNameInput" maxlength="18" value="${esc(p.display_name)}" placeholder="Nombre único"><button class="btn primary" id="saveProfileBtn">Guardar perfil</button></div><div class="socialActions"><button class="btn ghost" id="shareProfileBtn">Compartir perfil</button><button class="btn ghost" id="createRoomBtn">Crear sala</button></div><div class="socialForm"><input id="searchPlayerInput" placeholder="Buscar por ID o nombre"><button class="btn primary" id="searchPlayerBtn">Buscar jugador</button></div><div class="socialResults" id="socialResults"></div><div class="inviteBox" id="shareBox" hidden>${esc(shareUrl)}</div><p class="socialNotice">Tu ID se genera automáticamente. El nombre visible no puede repetirse. Las fichas y puntos son virtuales, sin valor real.</p>`);
+    shell(`<div class="socialTop"><div class="socialAvatar">${esc(p.avatar || '🦊')}</div><div><h2>${esc(p.display_name)}</h2><p><span class="socialCode">${esc(p.player_code)}</span> · Nivel ${p.level || 1}</p></div></div><div class="socialGrid"><div class="socialStat"><b>${p.total_points || 0}</b><span>Puntos</span></div><div class="socialStat"><b>${p.wins || 0}</b><span>Victorias</span></div><div class="socialStat"><b>${p.current_streak || 0}</b><span>Racha</span></div><div class="socialStat"><b>${p.games_played || 0}</b><span>Partidas</span></div></div><div class="socialForm"><input id="displayNameInput" maxlength="18" value="${esc(p.display_name)}" placeholder="Nombre único"><button class="btn primary" id="saveProfileBtn" type="button">Guardar perfil</button></div><div class="socialActions"><button class="btn ghost" id="shareProfileBtn" type="button">Compartir perfil</button><button class="btn ghost" id="createRoomBtn" type="button">Crear sala</button></div><div class="socialForm"><input id="searchPlayerInput" placeholder="Buscar por ID o nombre"><button class="btn primary" id="searchPlayerBtn" type="button">Buscar jugador</button></div><div class="socialResults" id="socialResults"></div><div class="inviteBox" id="shareBox" hidden>${esc(shareUrl)}</div><p class="socialNotice">Tu ID se genera automáticamente. El nombre visible no puede repetirse. Las fichas y puntos son virtuales, sin valor real.</p>`);
     document.querySelector('#saveProfileBtn').onclick = saveProfile;
     document.querySelector('#searchPlayerBtn').onclick = searchPlayer;
     document.querySelector('#shareProfileBtn').onclick = async () => shareText(shareUrl);
@@ -88,9 +91,9 @@
       const { data, error } = await request;
       if(error) throw error;
       if(!data.length){ box.innerHTML = '<p class="socialNotice">No encontré jugadores con ese dato.</p>'; return; }
-      box.innerHTML = data.map(p => `<article class="socialResult"><span class="avatar">${esc(p.avatar || '🦊')}</span><div><b>${esc(p.display_name)}</b><small><span class="socialCode">${esc(p.player_code)}</span> · Nivel ${p.level || 1} · ${p.wins || 0} wins</small></div><button class="btn small primary" data-add="${p.id}">Solicitud</button></article>`).join('');
+      box.innerHTML = data.map(p => `<article class="socialResult"><span class="avatar">${esc(p.avatar || '🦊')}</span><div><b>${esc(p.display_name)}</b><small><span class="socialCode">${esc(p.player_code)}</span> · Nivel ${p.level || 1} · ${p.wins || 0} victorias</small></div><button class="btn small primary" data-add="${p.id}" type="button">Solicitud</button></article>`).join('');
       box.querySelectorAll('[data-add]').forEach(btn => btn.onclick = () => sendFriendRequest(btn.dataset.add));
-    }catch(err){ box.innerHTML = `<p class="socialNotice">Error: ${esc(err.message || 'No se pudo buscar')}</p>`; }
+    }catch(err){ box.innerHTML = '<p class="socialNotice">No se pudo buscar ahora. Inténtalo de nuevo después.</p>'; }
   }
   async function sendFriendRequest(receiverId){
     if(receiverId === currentUser.id) return toast('Ese eres tú');
@@ -130,15 +133,14 @@
       document.querySelector('#searchPlayerInput').value = profileCode;
       searchPlayer();
     }
-    if(roomCode){
-      toast(`Sala detectada: ${roomCode}`);
-    }
+    if(roomCode) toast(`Sala detectada: ${roomCode}`);
   }
   function addFab(){
     if(document.querySelector('.socialFab')) return;
     const btn = document.createElement('button');
     btn.className = 'socialFab';
     btn.textContent = '👤';
+    btn.type = 'button';
     btn.onclick = openSocial;
     document.body.appendChild(btn);
   }
