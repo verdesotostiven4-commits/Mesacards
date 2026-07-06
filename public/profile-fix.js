@@ -1,0 +1,1 @@
+const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/gh/verdesotostiven4-commits/Mesacards@main/profile-fix.js?v=23';document.body.appendChild(s);
