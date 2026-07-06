@@ -21,6 +21,7 @@ const files = [
   'supabase-config.js',
   'social.js',
   'luxury-home.js',
+  'profile-fix.js',
   'luxury-online.js',
   'luxury-games.js',
   'manifest.webmanifest',
